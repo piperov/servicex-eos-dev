@@ -132,3 +132,59 @@ class TestObjectStoreManager:
         with pytest.raises(ObjectStoreError):
             result.upload_file("my-bucket", "foo.txt", "/tmp/foo.txt")
         assert mock_minio.fput_object.call_count == 1
+
+    def test_init_fsspec(self):
+        from unittest.mock import patch
+        with patch("fsspec.filesystem") as mock_fsspec:
+            os.environ["OBJECT_STORE_TYPE"] = "eos"
+            os.environ["EOS_HOST"] = "my-host.edu"
+            os.environ["EOS_PROTOCOL"] = "root"
+            os.environ["EOS_PATH_PREFIX"] = "/some/prefix/"
+
+            manager = ObjectStoreManager()
+            assert manager.store_type == "eos"
+            assert manager.eos_host == "my-host.edu"
+            assert manager.eos_protocol == "root"
+            assert manager.path_prefix == "/some/prefix"
+            mock_fsspec.assert_called_once_with("root", hostid="my-host.edu")
+
+            # Clean up env
+            del os.environ["OBJECT_STORE_TYPE"]
+            del os.environ["EOS_HOST"]
+            del os.environ["EOS_PROTOCOL"]
+            del os.environ["EOS_PATH_PREFIX"]
+
+    def test_upload_file_fsspec(self):
+        from unittest.mock import patch, MagicMock, mock_open
+        mock_fs = MagicMock()
+        with patch("fsspec.filesystem", return_value=mock_fs), patch("os.remove"), patch("builtins.open", mock_open(read_data=b"data")):
+            os.environ["OBJECT_STORE_TYPE"] = "eos"
+            os.environ["EOS_HOST"] = "my-host.edu"
+            os.environ["EOS_PATH_PREFIX"] = "/some/prefix"
+
+            manager = ObjectStoreManager()
+            manager.upload_file("my-bucket", "foo.txt", "/tmp/foo.txt")
+
+            mock_fs.makedirs.assert_called_once_with("/some/prefix/my-bucket", exist_ok=True)
+            mock_fs.open.assert_called_once_with("/some/prefix/my-bucket/foo.txt", "wb")
+
+            # Clean up env
+            del os.environ["OBJECT_STORE_TYPE"]
+            del os.environ["EOS_HOST"]
+            del os.environ["EOS_PATH_PREFIX"]
+
+    def test_upload_file_fsspec_exception(self):
+        from unittest.mock import patch, MagicMock, mock_open
+        mock_fs = MagicMock()
+        mock_fs.open.side_effect = Exception("Upload error")
+        with patch("fsspec.filesystem", return_value=mock_fs), patch("os.remove"), patch("builtins.open", mock_open(read_data=b"data")):
+            os.environ["OBJECT_STORE_TYPE"] = "eos"
+            os.environ["EOS_HOST"] = "my-host.edu"
+
+            manager = ObjectStoreManager()
+            with pytest.raises(ObjectStoreError):
+                manager.upload_file("my-bucket", "foo.txt", "/tmp/foo.txt")
+
+            # Clean up env
+            del os.environ["OBJECT_STORE_TYPE"]
+            del os.environ["EOS_HOST"]
