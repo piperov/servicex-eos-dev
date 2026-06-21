@@ -1,0 +1,190 @@
+# Copyright (c) 2019, IRIS-HEP
+# All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions are met:
+#
+# * Redistributions of source code must retain the above copyright notice, this
+#   list of conditions and the following disclaimer.
+#
+# * Redistributions in binary form must reproduce the above copyright notice,
+#   this list of conditions and the following disclaimer in the documentation
+#   and/or other materials provided with the distribution.
+#
+# * Neither the name of the copyright holder nor the names of its
+#   contributors may be used to endorse or promote products derived from
+#   this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+# DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+# FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+# SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+# CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+# OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+import os
+
+import pytest
+
+from transformer_sidecar.object_store_manager import (
+    ObjectStoreManager,
+    ObjectStoreError,
+)
+
+
+class TestObjectStoreManager:
+    def test_init(self, mocker):
+        mock_minio = mocker.patch("minio.Minio")
+        ObjectStoreManager("localhost:9999", "foo", "bar")
+        called_config = mock_minio.call_args[1]
+        assert called_config["endpoint"] == "localhost:9999"
+        assert called_config["access_key"] == "foo"
+        assert called_config["secret_key"] == "bar"
+        assert not called_config["secure"]
+
+        ObjectStoreManager("localhost:9999", "foo", "bar", True)
+        called_config = mock_minio.call_args[1]
+        assert called_config["endpoint"] == "localhost:9999"
+        assert called_config["access_key"] == "foo"
+        assert called_config["secret_key"] == "bar"
+        assert called_config["secure"]
+
+    def test_init_from_env(self, mocker):
+        os.environ["MINIO_URL"] = "localhost:9999"
+        os.environ["MINIO_ACCESS_KEY"] = "test"
+        os.environ["MINIO_SECRET_KEY"] = "shhh"
+        mock_minio = mocker.patch("minio.Minio")
+
+        ObjectStoreManager()
+        called_config = mock_minio.call_args[1]
+        assert called_config["endpoint"] == "localhost:9999"
+        assert called_config["access_key"] == "test"
+        assert called_config["secret_key"] == "shhh"
+        assert not called_config["secure"]
+
+        os.environ["MINIO_ENCRYPT"] = "True"
+        ObjectStoreManager()
+        called_config = mock_minio.call_args[1]
+        assert called_config["endpoint"] == "localhost:9999"
+        assert called_config["access_key"] == "test"
+        assert called_config["secret_key"] == "shhh"
+        assert called_config["secure"]
+
+    def test_upload_file(self, mocker):
+        import minio
+
+        mock_minio = mocker.MagicMock(minio.api.Minio)
+        mock_minio.fput_object = mocker.Mock()
+        mocker.patch("minio.Minio", return_value=mock_minio)
+        result = ObjectStoreManager("localhost:9999", "foo", "bar")
+        result.upload_file("my-bucket", "foo.txt", "/tmp/foo.txt")
+        mock_minio.fput_object.assert_called()
+
+    def test_upload_file_exception(self, mocker):
+        import minio
+
+        def s3_error(code):
+            """
+            Construct an S3Error with a specific code.
+            """
+            return minio.error.S3Error(
+                response=mocker.Mock(),
+                code=code,
+                message="Mocked S3 Error",
+                resource="test-resource",
+                request_id="test-request-id",
+                host_id="test-host-id",
+            )
+
+        mock_minio = mocker.MagicMock(minio.api.Minio)
+        mock_minio.fput_object = mocker.Mock()
+
+        # Throw three retryable errors
+        mock_minio.fput_object.side_effect = [
+            s3_error("SlowDown"),
+            s3_error("ServiceUnavailable"),
+            s3_error("Throttling"),
+        ]
+
+        mocker.patch("minio.Minio", return_value=mock_minio)
+        result = ObjectStoreManager("localhost:9999", "foo", "bar")
+        with pytest.raises(ObjectStoreError):
+            result.upload_file("my-bucket", "foo.txt", "/tmp/foo.txt")
+        assert mock_minio.fput_object.call_count == 3
+
+        # Now throw one retryable exception and one non-retryable which should
+        # cause the upload to fail after the first retry
+        mock_minio.fput_object.reset_mock()
+        mock_minio.fput_object.side_effect = [
+            s3_error("SlowDown"),
+            s3_error("ItsDeadJim"),
+        ]
+        with pytest.raises(ObjectStoreError):
+            result.upload_file("my-bucket", "foo.txt", "/tmp/foo.txt")
+        assert mock_minio.fput_object.call_count == 2
+
+        # Now test out the MinioExceptions which are all non-retryable
+        mock_minio.fput_object.reset_mock()
+        mock_minio.fput_object.side_effect = minio.error.MinioException()
+        with pytest.raises(ObjectStoreError):
+            result.upload_file("my-bucket", "foo.txt", "/tmp/foo.txt")
+        assert mock_minio.fput_object.call_count == 1
+
+    def test_init_fsspec(self):
+        from unittest.mock import patch
+        with patch("fsspec.filesystem") as mock_fsspec:
+            os.environ["OBJECT_STORE_TYPE"] = "eos"
+            os.environ["EOS_HOST"] = "my-host.edu"
+            os.environ["EOS_PROTOCOL"] = "root"
+            os.environ["EOS_PATH_PREFIX"] = "/some/prefix/"
+
+            manager = ObjectStoreManager()
+            assert manager.store_type == "eos"
+            assert manager.eos_host == "my-host.edu"
+            assert manager.eos_protocol == "root"
+            assert manager.path_prefix == "/some/prefix"
+            mock_fsspec.assert_called_once_with("root", hostid="my-host.edu")
+
+            # Clean up env
+            del os.environ["OBJECT_STORE_TYPE"]
+            del os.environ["EOS_HOST"]
+            del os.environ["EOS_PROTOCOL"]
+            del os.environ["EOS_PATH_PREFIX"]
+
+    def test_upload_file_fsspec(self):
+        from unittest.mock import patch, MagicMock
+        mock_fs = MagicMock()
+        with patch("fsspec.filesystem", return_value=mock_fs), patch("os.remove"):
+            os.environ["OBJECT_STORE_TYPE"] = "eos"
+            os.environ["EOS_HOST"] = "my-host.edu"
+            os.environ["EOS_PATH_PREFIX"] = "/some/prefix"
+
+            manager = ObjectStoreManager()
+            manager.upload_file("my-bucket", "foo.txt", "/tmp/foo.txt")
+
+            mock_fs.makedirs.assert_called_once_with("/some/prefix/my-bucket", exist_ok=True)
+            mock_fs.put.assert_called_once_with("/tmp/foo.txt", "/some/prefix/my-bucket/foo.txt")
+
+            # Clean up env
+            del os.environ["OBJECT_STORE_TYPE"]
+            del os.environ["EOS_HOST"]
+            del os.environ["EOS_PATH_PREFIX"]
+
+    def test_upload_file_fsspec_exception(self):
+        from unittest.mock import patch, MagicMock
+        mock_fs = MagicMock()
+        mock_fs.put.side_effect = Exception("Upload error")
+        with patch("fsspec.filesystem", return_value=mock_fs), patch("os.remove"):
+            os.environ["OBJECT_STORE_TYPE"] = "eos"
+            os.environ["EOS_HOST"] = "my-host.edu"
+
+            manager = ObjectStoreManager()
+            with pytest.raises(ObjectStoreError):
+                manager.upload_file("my-bucket", "foo.txt", "/tmp/foo.txt")
+
+            # Clean up env
+            del os.environ["OBJECT_STORE_TYPE"]
+            del os.environ["EOS_HOST"]
