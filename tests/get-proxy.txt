@@ -1,0 +1,7 @@
+
+$ sudo yum install voms-clients-cpp
+$ ls ~/.globus/
+readme_p12_osg.txt  usercert.pem  userkey.pem
+
+$ source /cvmfs/oasis.opensciencegrid.org/osg-software/osg-wn-client/25-main/current/el9-x86_64/setup.sh 
+$ voms-proxy-init -verify --rfc --voms cms -valid 192:00
