@@ -1,0 +1,131 @@
+noCerts: false
+
+app:
+  pullPolicy: Always
+  replicas: 1
+  checksImage: ncsa/checks:main
+  validateTransformerImage: false
+  tag: develop
+  resources:
+  ingress:
+    enabled: false
+    tls:
+      enabled: true
+      host: servicex-release-testing-1.servicex.ssl-hep.org
+      clusterIssuer: letsencrypt-prod
+
+  auth: false
+  logLevel: "debug"
+  jwtIssuer: https://cms-auth.web.cern.ch/
+  defaultUsers:
+
+transformer:
+  cachePrefix: "''"
+  autoscaler:
+    enabled: true
+    maxReplicas: 2
+    minReplicas: 2
+  sidecarImage: servicex-transformer-sidecar
+  sidecarTag: local
+#  sidecarTag: develop
+  sidecarPullPolicy: IfNotPresent
+  PullPolicy: IfNotPresent
+
+  language: python
+  exec: /generated/transform_single_file.py
+  scienceContainerPullPolicy: IfNotPresent
+
+codeGen:
+  uproot:
+    enabled: false
+  uproot-raw:
+    enabled: true
+    pullPolicy: IfNotPresent
+    image: sslhep/servicex_code_gen_raw_uproot
+    tag: "develop"
+    defaultScienceContainerImage: sslhep/servicex_func_adl_uproot_transformer
+    defaultScienceContainerTag: 5.6.9
+  python:
+    enabled: false
+  atlasr21:
+    enabled: false
+  atlasr22:
+    enabled: false
+  atlasr25:
+    enabled: false
+  atlasxaod:
+    enabled: false
+  cms:
+    enabled: false
+  rdataframe:
+    enabled: false
+  topcp:
+    enabled: false
+
+
+
+objectStore:
+  enabled: true
+  publicURL: localhost:9000
+  publicClientUseTLS: false
+
+
+scheduledTasks:
+  dataLifecycle:
+    enabled: false
+
+
+
+rabbitmq:
+  persistence:
+    enabled: true
+
+  authentication:
+    password:
+      value: leftfoot1
+    erlangCookie:
+      value: mmmmmmmcoookie
+  customConfig: |-
+    consumer_timeout = 3600000
+  service:
+    type: NodePort
+    amqp:
+      nodePort: 30672
+
+minio:
+  persistence:
+    enabled: false
+
+postgres:
+    enabled: true
+    persistence:
+      enabled: true
+
+didFinder:
+  rucio:
+    enabled: false
+    rucio_host: http://cms-rucio.cern.ch
+    auth_host: https://cms-rucio-auth.cern.ch
+    nodeSelector:
+      cms-af-prod: "true"
+    tolerations:
+      - key: "hub.jupyter.org/dedicated"
+        operator: "Equal"
+        value: "cms-af"
+        effect: "NoSchedule"
+  xrootd:
+    enabled: true
+    image: geddes-registry.rcac.purdue.edu/docker-hub-cache/sslhep/servicex-did-finder-xrootd
+    tag: "v1.8.3"
+    nodeSelector:
+      cms-af-prod: "true"
+    tolerations:
+      - key: "hub.jupyter.org/dedicated"
+        operator: "Equal"
+        value: "cms-af"
+        effect: "NoSchedule"
+  CERNOpenData:
+    enabled: false
+  atlasopenmagic:
+    enabled: false
+gridAccount: piperov
