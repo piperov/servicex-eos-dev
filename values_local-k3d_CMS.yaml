@@ -1,0 +1,68 @@
+postgres:
+  enabled: true
+# objectStore:
+#   publicURL: localhost:9000
+objectStore:
+  enabled: true
+  type: eos
+  internal: false
+  eos:
+    host: eos.cms.rcac.purdue.edu
+    protocol: root
+    pathPrefix: /store/user/piperov
+    useBucketDirectory: "true"
+gridAccount: piperov
+
+transformer:
+  cachePrefix: "''"
+  autoscaler:
+    enabled: true
+    maxReplicas: 2
+    minReplicas: 2
+  sidecarImage: servicex-transformer-sidecar
+  sidecarTag: local
+  #sidecarPullPolicy: IfNotPresent
+  PullPolicy: IfNotPresent
+
+  language: python
+  exec: /generated/transform_single_file.py
+  scienceContainerPullPolicy: IfNotPresent
+
+codeGen:
+  uproot-raw:
+    enabled: true
+    image: sslhep/servicex_code_gen_raw_uproot
+    tag: "v1.8.3"
+    defaultScienceContainerImage: sslhep/servicex_science_image_combined_root
+    defaultScienceContainerTag: 5.7.2-6.38.04
+    compressionAlgorithm: ZSTD
+    compressionLevel: 0
+  atlasr21:
+    enabled: false
+  atlasr22:
+    enabled: false
+  atlasr25:
+    enabled: false
+  topcp:
+    enabled: false
+didFinder:
+  rucio:
+    enabled: false
+#    pullPolicy: Always
+    rucio_host: http://cms-rucio.cern.ch
+    auth_host: https://cms-rucio-auth.cern.ch
+    threads: 2
+    site: T2_US_Purdue
+  CERNOpenData:
+    enabled: true
+    pullPolicy: Always
+  xrootd:
+    enabled: true
+    image: sslhep/servicex-did-finder-xrootd
+    tag: "v1.8.3"
+  atlasopenmagic:
+    enabled: false
+x509Secrets:
+  # tag: "v1.8.3"
+  vomsOrg: cms
+

@@ -82,6 +82,7 @@ TRANSFORMER_PERSISTENCE_PROVIDED_CLAIM = ""
 TRANSFORMER_PERSISTENCE_SUBDIR = "output/"
 
 OBJECT_STORE_ENABLED = False
+OBJECT_STORE_TYPE = 'minio' # options: 'minio', 'eos'
 MINIO_URL = 'localhost:9000'
 MINIO_ACCESS_KEY = 'miniouser'
 MINIO_SECRET_KEY = 'leftfoot1'
@@ -90,6 +91,12 @@ MINIO_SECRET_KEY = 'leftfoot1'
 MINIO_PUBLIC_URL = 'localhost:9000'
 MINIO_ENCRYPT_PUBLIC = True
 MINIO_ENCRYPT = False
+
+# EOS / fsspec / root settings if OBJECT_STORE_TYPE is 'eos'
+EOS_HOST = 'eos.cms.rcac.purdue.edu'
+EOS_PROTOCOL = 'root'
+EOS_PATH_PREFIX = '/store/user/piperov'
+EOS_USE_BUCKET_DIRECTORY = 'true'
 
 CODE_GEN_SERVICE_URLS = {
     'atlasxaod': 'http://servicex-code-gen-atlasxaod:8000',

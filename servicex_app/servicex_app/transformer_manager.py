@@ -282,26 +282,62 @@ class TransformerManager:
                 ]
 
         if result_destination == "object-store":
-            env = env + [
-                client.V1EnvVar(
-                    name="MINIO_URL", value=current_app.config["MINIO_URL_TRANSFORMER"]
-                ),
-                client.V1EnvVar(
-                    name="MINIO_ACCESS_KEY",
-                    value=current_app.config["MINIO_ACCESS_KEY"],
-                ),
-                client.V1EnvVar(
-                    name="MINIO_SECRET_KEY",
-                    value=current_app.config["MINIO_SECRET_KEY"],
-                ),
-            ]
-            if "MINIO_ENCRYPT" in current_app.config:
+            if current_app.config.get("OBJECT_STORE_TYPE", "minio").lower() in ["eos", "fsspec", "root"]:
                 env += [
                     client.V1EnvVar(
-                        name="MINIO_ENCRYPT",
-                        value=str(current_app.config["MINIO_ENCRYPT"]),
+                        name="OBJECT_STORE_TYPE",
+                        value=current_app.config.get("OBJECT_STORE_TYPE"),
                     )
                 ]
+                if "EOS_HOST" in current_app.config:
+                    env += [
+                        client.V1EnvVar(
+                            name="EOS_HOST",
+                            value=current_app.config["EOS_HOST"],
+                        )
+                    ]
+                if "EOS_PROTOCOL" in current_app.config:
+                    env += [
+                        client.V1EnvVar(
+                            name="EOS_PROTOCOL",
+                            value=current_app.config["EOS_PROTOCOL"],
+                        )
+                    ]
+                if "EOS_PATH_PREFIX" in current_app.config:
+                    env += [
+                        client.V1EnvVar(
+                            name="EOS_PATH_PREFIX",
+                            value=current_app.config["EOS_PATH_PREFIX"],
+                        )
+                    ]
+                if "EOS_USE_BUCKET_DIRECTORY" in current_app.config:
+                    env += [
+                        client.V1EnvVar(
+                            name="EOS_USE_BUCKET_DIRECTORY",
+                            value=str(current_app.config["EOS_USE_BUCKET_DIRECTORY"]),
+                        )
+                    ]
+            else:
+                env = env + [
+                    client.V1EnvVar(
+                        name="MINIO_URL", value=current_app.config["MINIO_URL_TRANSFORMER"]
+                    ),
+                    client.V1EnvVar(
+                        name="MINIO_ACCESS_KEY",
+                        value=current_app.config["MINIO_ACCESS_KEY"],
+                    ),
+                    client.V1EnvVar(
+                        name="MINIO_SECRET_KEY",
+                        value=current_app.config["MINIO_SECRET_KEY"],
+                    ),
+                ]
+                if "MINIO_ENCRYPT" in current_app.config:
+                    env += [
+                        client.V1EnvVar(
+                            name="MINIO_ENCRYPT",
+                            value=str(current_app.config["MINIO_ENCRYPT"]),
+                        )
+                    ]
 
         if result_destination == "volume":
             TransformerManager.create_posix_volume(volumes, volume_mounts)

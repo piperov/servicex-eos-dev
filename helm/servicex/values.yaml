@@ -328,9 +328,15 @@ noCerts: false
 objectStore:
   enabled: true
   internal: true
+  type: minio
   publicClientUseTLS: true
   publicURL: null
   useTLS: false
+  eos:
+    host: eos.cms.rcac.purdue.edu
+    protocol: root
+    pathPrefix: /store/user/piperov
+    useBucketDirectory: "true"
 postgres:
   enabled: false
 postgresql:

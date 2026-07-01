@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-storage-config
+  labels:
+    heritage: {{ .Release.Service }}
+    release: {{ .Release.Name }}
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    app: {{ .Release.Name }}
+data:
+  OBJECT_STORE_ENABLED: {{ ternary "True" "False" .Values.objectStore.enabled | quote }}
+  OBJECT_STORE_TYPE: {{ .Values.objectStore.type | default "minio" | quote }}
+  {{- if .Values.objectStore.eos }}
+  EOS_HOST: {{ .Values.objectStore.eos.host | quote }}
+  EOS_PROTOCOL: {{ .Values.objectStore.eos.protocol | quote }}
+  EOS_PATH_PREFIX: {{ .Values.objectStore.eos.pathPrefix | quote }}
+  EOS_USE_BUCKET_DIRECTORY: {{ .Values.objectStore.eos.useBucketDirectory | quote }}
+  {{- end }}
+  {{- if not .Values.objectStore.internal }}
+  # using external minio
+  MINIO_URL: {{ .Values.objectStore.publicURL | quote }}
+  MINIO_URL_TRANSFORMER: {{ .Values.objectStore.publicURL | quote }}
+  MINIO_PUBLIC_URL: {{ .Values.objectStore.publicURL | quote }}
+  MINIO_ENCRYPT: {{ ternary "True" "False" .Values.objectStore.useTLS | quote }}
+  {{- else }}
+  # using internal minio
+  MINIO_URL: {{ printf "%s-minio:%v" .Release.Name .Values.minio.service.ports.api | quote }}
+  MINIO_URL_TRANSFORMER: {{ printf "%s-minio:%v" .Release.Name .Values.minio.service.ports.api | quote }}
+  {{- if .Values.minio.apiIngress.enabled }}
+  MINIO_PUBLIC_URL: {{ .Values.objectStore.publicURL | default .Values.minio.apiIngress.hostname | quote }}
+  MINIO_ENCRYPT: {{ ternary "True" "False" .Values.objectStore.useTLS | quote }}
+  {{- else }}
+  {{- $internal_minio := printf "%s-minio:%v" .Release.Name .Values.minio.service.ports.api -}}
+  MINIO_PUBLIC_URL: {{ .Values.objectStore.publicURL | default $internal_minio | quote }}
+  {{- end }}
+  {{- end }}
+  MINIO_ACCESS_KEY: {{ .Values.minio.auth.rootUser | quote }}
+  MINIO_SECRET_KEY: {{ .Values.minio.auth.rootPassword | quote }}

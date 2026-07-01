@@ -262,6 +262,20 @@ def create_app(
 
     app.logger.info("Initialized logging")
 
+    app.config["OBJECT_STORE_ENABLED"] = False
+    app.config["OBJECT_STORE_TYPE"] = "minio"
+    app.config["MINIO_URL"] = None
+    app.config["MINIO_URL_TRANSFORMER"] = None
+    app.config["MINIO_PUBLIC_URL"] = None
+    app.config["MINIO_ACCESS_KEY"] = None
+    app.config["MINIO_SECRET_KEY"] = None
+    app.config["MINIO_ENCRYPT"] = False
+    app.config["MINIO_ENCRYPT_PUBLIC"] = False
+    app.config["EOS_HOST"] = None
+    app.config["EOS_PROTOCOL"] = None
+    app.config["EOS_PATH_PREFIX"] = None
+    app.config["EOS_USE_BUCKET_DIRECTORY"] = True
+
     if not test_config:
         app.config.from_envvar("APP_CONFIG_FILE")
         app.config.update(_override_config_with_environ(app))
@@ -294,7 +308,7 @@ def create_app(
         if app.config["DID_FINDER_DEFAULT_SCHEME"] not in schemes:
             raise ValueError(f"Default DID Finder Scheme not listed in {schemes}")
 
-        if app.config["OBJECT_STORE_ENABLED"]:
+        if app.config.get("OBJECT_STORE_ENABLED", False):
             if not provided_object_store:
                 if "MINIO_ENCRYPT" in app.config:
                     if isinstance(app.config["MINIO_ENCRYPT"], bool):
@@ -304,10 +318,15 @@ def create_app(
                 else:
                     use_https = False
                 object_store = ObjectStoreManager(
-                    app.config["MINIO_URL"],
-                    username=app.config["MINIO_ACCESS_KEY"],
-                    password=app.config["MINIO_SECRET_KEY"],
+                    app.config.get("MINIO_URL"),
+                    username=app.config.get("MINIO_ACCESS_KEY"),
+                    password=app.config.get("MINIO_SECRET_KEY"),
                     use_https=use_https,
+                    store_type=app.config.get("OBJECT_STORE_TYPE", "minio"),
+                    eos_host=app.config.get("EOS_HOST"),
+                    eos_protocol=app.config.get("EOS_PROTOCOL"),
+                    eos_path_prefix=app.config.get("EOS_PATH_PREFIX"),
+                    eos_use_bucket_directory=app.config.get("EOS_USE_BUCKET_DIRECTORY"),
                 )
             else:
                 object_store = provided_object_store
