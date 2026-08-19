@@ -1,0 +1,110 @@
+  G## What We Did                                                                                                                     
+                                                                                                                                      
+  1. Reverted  app/configmap.yaml  changes: Removed the storage settings from the general application-level configmap to prevent      
+  pollution and keep  app.conf  focused on Flask-only configs.                                                                        
+  2. Created a Dedicated Storage ConfigMap: Created a new Helm template storage-configmap.yaml placed cleanly in a dedicated directory
+under  
+  templates/transformer-sidecar/ :                                                                                                    
+    apiVersion: v1                                                                                                                    
+    kind: ConfigMap                                                                                                                   
+    metadata:                                                                                                                         
+      name: {{ .Release.Name }}-storage-config                                                                                        
+    data:                                                                                                                             
+      OBJECT_STORE_ENABLED: {{ ternary "True" "False" .Values.objectStore.enabled | quote }}                                          
+      OBJECT_STORE_TYPE: {{ .Values.objectStore.type | default "minio" | quote }}                                                     
+      ...                                                                                                                             
+      EOS_HOST: {{ .Values.objectStore.eos.host | quote }}                                                                            
+      ...                                                                                                                             
+                                                                                                                                      
+  3. Loaded Storage Settings via  envFrom : Updated deployment.yaml to mount all keys in  storage-config  directly as environment      
+  variables inside the app pod:                                                                                                       
+    envFrom:                                                                                                                          
+    - configMapRef:                                                                                                                   
+        name: {{ .Release.Name }}-storage-config                                                                                      
+                                                                                                                                      
+  and  _override_config_with_environ  can override them with the injected environment variables during start-up.                      
+  5. Redeployed successfully: Upgraded  servicex  in  servicex2  with revision 3.                                                     
+  ──────                                                                                                                              
+  ### Verification                                                                                                                    
+                                                                                                                                      
+  We verified the deployed configmap  servicex-storage-config :                                                                       
+  4. Declared Config Defaults: Initialized the config keys with default fallback values in __init__.py so Flask knows about them   
+                                                                                                                                      
+    apiVersion: v1                                                                                                                    
+    kind: ConfigMap                                                                                                                   
+    data:                                                                                                                             
+      EOS_HOST: eos.cms.rcac.purdue.edu                                                                                               
+      EOS_PATH_PREFIX: /store/user/piperov                                                                                            
+      EOS_PROTOCOL: root                                                                                                              
+      EOS_USE_BUCKET_DIRECTORY: "true"                                                                                                
+      OBJECT_STORE_ENABLED: "True"                                                                                                    
+      OBJECT_STORE_TYPE: eos                                                                                                          
+    metadata:                                                                                                                         
+      name: servicex-storage-config                                                                                                   
+      namespace: servicex2                                                                                                            
+                                                                                                                                      
+  All pods in  servicex2  (including  servicex-servicex-app ) have rolled out successfully and are now in a  Running  state.          
+
+
+  To summarize, here is what was done:                                                                                                                                      
+  • Storage configuration (both EOS and MinIO fallback variables) is cleanly separated into its own template storage-configmap.yaml
+under     
+  templates/transformer-sidecar .                                                                                                     
+  • The  servicex-app  pod loads them seamlessly as environment variables via  envFrom .                                              
+  • The  transformer_manager.py  forwards them down to dynamic transformer pods when spawned.                                         
+  • The app-side  ObjectStoreManager  supports directory creation/lifecycle matching on EOS. 
+
+
+The changes are done in `servicex_app`, not in `transformer_sidecar`
+So:
+  1. Rebuild the image with the  :local  tag:
+    cd servicex_app
+    docker build -t sslhep/servicex_app:local .
+  
+  2. Import it into your k3d cluster:
+    k3d image import sslhep/servicex_app:local -c my-dev-cluster
+  
+  3. Deploy the updated Helm release:
+    helm upgrade --install servicex ./helm/servicex -n servicex2 -f values_local-k3d_CMS.yaml
+  
+
+===============
+
+> So, next time when I need to deploy servicex with a different EOS storage element - let's say eos.cms.cern.ch - and possibly with a
+  different path, not /store/user/piperov - where should I change these parameters? What file carries these settings currently?
+
+  You should make these changes directly in your custom configuration file: values_local-k3d_CMS.yaml.
+  
+  Currently, this file contains the following block:
+  
+    objectStore:
+      enabled: true
+      type: eos
+      internal: false
+      eos:
+        host: eos.cms.rcac.purdue.edu       # <-- Change this to "eos.cms.cern.ch"
+        protocol: root
+        pathPrefix: /store/user/piperov     # <-- Change this to "/your/new/path"
+        useBucketDirectory: "true"
+  
+  ### How it propagates:
+  
+  When you run  helm upgrade --install ... -f values_local-k3d_CMS.yaml :
+  
+  1. Helm updates the storage-configmap.yaml in the cluster.
+  2. The  servicex-app  pod automatically detects the ConfigMap update and updates its internal storage settings.
+  3. When the app dynamically spawns transformer sidecar pods, it passes the updated environment variables to them.
+  
+  No changes to Python source code or Docker images are required when updating these settings!
+-----------------------
+
+I use the Pixi 'global' environment from /cvmfs/
+What if others don't have this?
+
+  #### Option B: Native pip installation
+  
+  They can install the required packages natively in their own python virtual environments (e.g.  venv  or  conda ):
+  
+    pip install fsspec fsspec-xrootd
+
+=====================

@@ -1,0 +1,7 @@
+ 1114  kubectl patch svc servicex-servicex-app -n servicex2 -p '{"spec":{"type":"NodePort","ports":[{"port":8000,"nodePort":30800}]}}'
+ 1115  kubectl delete svc app-direct-nodeport minio-direct-nodeport rabbitmq-direct-nodeport -n servicex2
+ 1116  kubectl patch svc servicex-servicex-app -n servicex2 -p '{"spec":{"type":"NodePort","ports":[{"port":8000,"nodePort":30800}]}}'
+ 1117  kubectl patch svc servicex-rabbitmq -n servicex2 -p '{"spec":{"type":"NodePort","ports":[{"name":"http","port":15672,"nodePort":31567}]}}'
+ 1118  kubectl patch svc servicex-minio -n servicex2 -p '{"spec":{"type":"NodePort","ports":[{"name":"minio-api","port":9000,"nodePort":30900},{"name":"minio-console","port":9001,"nodePort":30901}]}}'
+ 1119  curl -I http://localhost:8000
+

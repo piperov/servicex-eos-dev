@@ -31,7 +31,10 @@ spec_uproot_raw = {
     }]
 }
 
-results_uproot_raw=deliver(spec_uproot_raw)
+# Change this line in tests/CMS_uproot_example.py
+results_uproot_raw = deliver(spec_uproot_raw, servicex_name="local")
+#results_uproot_raw=deliver(spec_uproot_raw)
+
 
 
 # Read output file

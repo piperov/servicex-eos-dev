@@ -1,0 +1,7 @@
+api_endpoints:
+  - name: 'local' 
+    endpoint: http://localhost:8000/
+    type: uproot
+  - name: 'default' 
+    endpoint: http://localhost:8000/
+    type: uproot

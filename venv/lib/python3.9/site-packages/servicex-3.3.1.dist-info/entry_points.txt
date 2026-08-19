@@ -1,0 +1,18 @@
+[console_scripts]
+servicex = servicex.app.main:app
+
+[servicex.dataset]
+CERNOpenData = servicex.dataset_identifier:CERNOpenDataDatasetIdentifier
+FileList = servicex.dataset_identifier:FileListDataset
+Rucio = servicex.dataset_identifier:RucioDatasetIdentifier
+XRootD = servicex.dataset_identifier:XRootDDatasetIdentifier
+
+[servicex.query]
+FuncADL_ATLASr21 = servicex.func_adl.func_adl_dataset:FuncADLQuery_ATLASr21
+FuncADL_ATLASr22 = servicex.func_adl.func_adl_dataset:FuncADLQuery_ATLASr22
+FuncADL_ATLASxAOD = servicex.func_adl.func_adl_dataset:FuncADLQuery_ATLASxAOD
+FuncADL_CMS = servicex.func_adl.func_adl_dataset:FuncADLQuery_CMS
+FuncADL_Uproot = servicex.func_adl.func_adl_dataset:FuncADLQuery_Uproot
+PythonFunction = servicex.python_dataset:PythonFunction
+TopCP = servicex.topcp.topcp:TopCPQuery
+UprootRaw = servicex.uproot_raw.uproot_raw:UprootRawQuery

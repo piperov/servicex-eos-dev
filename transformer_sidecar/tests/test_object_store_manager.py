@@ -37,6 +37,8 @@ from transformer_sidecar.object_store_manager import (
 
 class TestObjectStoreManager:
     def test_init(self, mocker):
+        os.environ.pop("EOS_HOST", None)
+        os.environ.pop("OBJECT_STORE_TYPE", None)
         mock_minio = mocker.patch("minio.Minio")
         ObjectStoreManager("localhost:9999", "foo", "bar")
         called_config = mock_minio.call_args[1]
@@ -53,6 +55,8 @@ class TestObjectStoreManager:
         assert called_config["secure"]
 
     def test_init_from_env(self, mocker):
+        os.environ.pop("EOS_HOST", None)
+        os.environ.pop("OBJECT_STORE_TYPE", None)
         os.environ["MINIO_URL"] = "localhost:9999"
         os.environ["MINIO_ACCESS_KEY"] = "test"
         os.environ["MINIO_SECRET_KEY"] = "shhh"
@@ -76,6 +80,8 @@ class TestObjectStoreManager:
     def test_upload_file(self, mocker):
         import minio
 
+        os.environ.pop("EOS_HOST", None)
+        os.environ.pop("OBJECT_STORE_TYPE", None)
         mock_minio = mocker.MagicMock(minio.api.Minio)
         mock_minio.fput_object = mocker.Mock()
         mocker.patch("minio.Minio", return_value=mock_minio)
@@ -86,6 +92,8 @@ class TestObjectStoreManager:
     def test_upload_file_exception(self, mocker):
         import minio
 
+        os.environ.pop("EOS_HOST", None)
+        os.environ.pop("OBJECT_STORE_TYPE", None)
         def s3_error(code):
             """
             Construct an S3Error with a specific code.

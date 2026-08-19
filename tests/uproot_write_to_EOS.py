@@ -10,7 +10,7 @@ with uproot.recreate(local_path) as f:
 # 2. Transfer via XRootD client
 with client.File() as f_remote:
     # status, _ = f_remote.open("root://eos.cms.rcac.purdue.edu//store/user/piperov/test-remote.root", client.flags.OpenFlags.DELETE)
-    status, _ = f_remote.open("root://eos.cms.rcac.purdue.edu//store/user/piperov/test-remote.root", OpenFlags.NEW | OpenFlags.UPDATE)
+    status, _ = f_remote.open("root://eos.cms.rcac.purdue.edu//store/user/piperov/test-remote_07aug2026.root", OpenFlags.NEW | OpenFlags.UPDATE)
     if status.ok:
         with open(local_path, "rb") as f_local:
             f_remote.write(f_local.read())

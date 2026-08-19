@@ -1,5 +1,8 @@
 postgres:
   enabled: true
+app:
+  tag: local
+  pullPolicy: IfNotPresent
 # objectStore:
 #   publicURL: localhost:9000
 objectStore:

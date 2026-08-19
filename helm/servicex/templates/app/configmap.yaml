@@ -150,6 +150,13 @@ data:
       {{ else }}
     MINIO_ENCRYPT_PUBLIC = False
       {{ end }}
+      {{ if eq .Values.objectStore.type "eos" }}
+    OBJECT_STORE_TYPE = 'eos'
+    EOS_HOST = '{{ .Values.objectStore.eos.host }}'
+    EOS_PROTOCOL = '{{ .Values.objectStore.eos.protocol }}'
+    EOS_PATH_PREFIX = '{{ .Values.objectStore.eos.pathPrefix }}'
+    EOS_USE_BUCKET_DIRECTORY = '{{ .Values.objectStore.eos.useBucketDirectory }}'
+      {{ end }}
       {{ if not .Values.objectStore.internal }}
     # using external minio
     MINIO_URL = '{{ .Values.objectStore.publicURL }}'
