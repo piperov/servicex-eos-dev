@@ -1,0 +1,72 @@
+# k3d-cluster.yaml
+apiVersion: k3d.io/v1alpha5
+kind: Simple
+
+metadata:
+  name: my-dev-cluster
+
+servers: 1
+agents: 2
+
+image: rancher/k3s:v1.35.4-k3s1
+
+ports:
+  - port: 8080:80
+    nodeFilters:
+      - loadbalancer
+  - port: 8443:443
+    nodeFilters:
+      - loadbalancer
+#  # MAP ServiceX HARDCODED PORTS NATIVELY INTO THE CLUSTER
+#   - port: 8000:30800
+#     nodeFilters:
+#       - loadbalancer
+#   - port: 15672:31567
+#     nodeFilters:
+#       - loadbalancer
+#   - port: 9000:30900
+#     nodeFilters:
+#       - loadbalancer
+#   - port: 9001:30901
+#     nodeFilters:
+#       - loadbalancer
+
+
+options:
+  k3d:
+    wait: true
+    timeout: "60s"
+  k3s:
+    extraArgs:
+      - arg: "--disable=traefik"
+        nodeFilters:
+          - server:*
+  kubeconfig:
+    updateDefaultKubeconfig: true
+    switchCurrentContext: true
+
+registries:
+  create:
+    name: k3d-local-registry
+    host: "0.0.0.0"
+    hostPort: "5000"
+  config: |
+    mirrors:
+      "k3d-local-registry:5000":
+        endpoint:
+          - "http://k3d-local-registry:5000"
+      "k3d-local-registry.internal:5000":
+        endpoint:
+          - http://k3d-local-registry:5000
+
+# volumes:
+#   - volume: /k3d-data:/data
+#     nodeFilters:
+#       - all
+volumes:
+  - volume: /k3d-data:/data
+    nodeFilters:
+      - all
+  - volume: /home/piperov/UIUC_Retreat/namespace-servicex2.yaml:/var/lib/rancher/k3s/server/manifests/namespace-servicex2.yaml
+    nodeFilters:
+      - server:0
