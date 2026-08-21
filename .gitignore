@@ -3,3 +3,19 @@
 .vscode/
 poetry.toml
 .pyc
+
+# Virtual environment
+venv/
+
+# ROOT files and backups
+*.root
+*_bak
+*.txt
+
+# Local configuration files
+*config*.yaml
+values_local*.yaml
+servicex.yaml
+port-patch.txt
+
+venv/
