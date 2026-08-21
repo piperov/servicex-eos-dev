@@ -19,3 +19,4 @@ servicex.yaml
 port-patch.txt
 
 venv/
+*.swp
