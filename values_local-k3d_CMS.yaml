@@ -2,7 +2,10 @@ postgres:
   enabled: true
 app:
   tag: local
-  pullPolicy: IfNotPresent
+#  image: localhost:5000/servicex_app
+  image: k3d-local-registry:5000/servicex_app
+#  pullPolicy: IfNotPresent
+  pullPolicy: Always
 # objectStore:
 #   publicURL: localhost:9000
 objectStore:
@@ -22,10 +25,16 @@ transformer:
     enabled: true
     maxReplicas: 2
     minReplicas: 2
+#  sidecarImage: k3d-local-registry:5000/servicex-transformer-sidecar
+#  sidecarTag: local
+#  sidecarPullPolicy: Always
   sidecarImage: servicex-transformer-sidecar
   sidecarTag: local
-  #sidecarPullPolicy: IfNotPresent
-  PullPolicy: IfNotPresent
+  sidecarPullPolicy: Never  # Forces it to use the node's local cache
+#  PullPolicy: IfNotPresent
+  tag: local
+  image: k3d-local-registry:5000/servicex-transformer-sidecar
+  pullPolicy: Always
 
   language: python
   exec: /generated/transform_single_file.py
