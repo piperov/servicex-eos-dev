@@ -9,7 +9,7 @@ import hist
 import matplotlib.pyplot as plt
 
 
-file = "root://eos.cms.rcac.purdue.edu:1094//store/mc/RunIII2024Summer24NanoAODv15/VBFH-Hto2Mu_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2024_realistic_v2-v2/100000/1d437865-3bfb-4d90-b596-c2f638d398f3.root"
+file = "root://eos.cms.rcac.purdue.edu:1094//store/mc/RunIII2024Summer24NanoAODv15/VBFH-Hto2Mu_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2024_realistic_v2-v2/100000/37009fc8-d8e9-4c29-9dfe-c87bea77af62.root"
 
 # other files of the same dataset
 # 37009fc8-d8e9-4c29-9dfe-c87bea77af62.root"
