@@ -1,0 +1,91 @@
+
+20aug2026
+---
+
+This is how I re-deployed the whole ServiceX environment and ran the sample CMS application as a test:
+
+0. Go to working directory:
+cd ~/work/ServiceX
+
+1. Delete the old k3d cluster:
+k3d cluster delete my-dev-cluster
+
+2. Create a new k3d cluster of one server and 2 agents. It also has an internal registry:
+k3d cluster create --config k3d_my-dev-cluster_config.yaml
+
+3. re-build the images for servicex-transformer-sidecar:local and servicex_app:local and push them into the local registry (running on local port 5000):
+cd transformer_sidecar/
+docker build -t servicex-transformer-sidecar:local .
+docker tag servicex-transformer-sidecar:local localhost:5000/servicex-transformer-sidecar:local
+docker push localhost:5000/servicex-transformer-sidecar:local
+
+cd ../servicex_app/
+docker build -t servicex_app:local .
+docker tag servicex_app:local localhost:5000/servicex_app:local
+docker push localhost:5000/servicex_app:local
+cd ..
+
+Q: would't it be faster to tag the images directly as localhost:5000/servicex.... instead of re-tagging them afterwards?
+A: Gemini suggested:
+docker build -t servicex-transformer-sidecar:local -t localhost:5000/servicex-transformer-sidecar:local .
+docker build -t servicex_app:local -t localhost:5000/servicex_app:local .
+
+and it seems to work.
+So it's basically 'apply the extra tag already at the time of building the image.`
+
+I also import the images in the k3d cluster the 'old way':
+-
+k3d image import servicex_app:local -c my-dev-cluster
+k3d image import servicex-transformer-sidecar:local -c my-dev-cluster
+
+Q: Is this still necessary, or is the docker push above enough? 
+   Or is it the thing that actually works, and the docker push is not needed?
+A: On next re-deployment I skipped this step, and the transformer pods failed to pull the image, so - this step cannot be skipped.
+
+4. Do the VOMS Proxy initialization
+servicex --namespace servicex2 init --cert-dir ~/.globus
+
+5. Install the Helm Chart:
+helm install -n servicex2 -f values_stefan_CMS.yaml --version v1.8.4 servicex ssl-hep/servicex
+
+6. Do the port-forwarding:
+screen -dr port-fwd
+kubectl port-forward -n servicex2 --address 127.0.0.1 svc/servicex-servicex-app 8000:8000 &
+kubectl port-forward -n servicex2 --address 127.0.0.1 pod/servicex-rabbitmq-0 15672:15672 &
+kubectl port-forward -n servicex2 --address 127.0.0.1 svc/servicex-minio 9000:9000 9001:9001 &
+Ctrl+A d
+
+7. In a separate xterm, start a Pixi shell with the pixi-global env
+cd /cvmfs/cms-af.opensciencegrid.org/paf/pixi/global/
+~/pixi shell
+cd -
+
+8. Run the example
+(pixi-global) ┌[piperov@lat7490-a9][~/work/ServiceX](develop) 
+              └$ python ./CMS_uproot_example.py
+
+It should produce a plot of the di-muon invariant mass 
+
+That concludes the test with the original transformer and servicex-app
+=====================
+
+To test with the modified transformer and servicex-app :
+
+1. Point HELM to the local chart:
+helm upgrade --install -n servicex2 -f values_local-k3d_CMS.yaml servicex ./helm/servicex
+
+2. In the client terminal, set the EOS env variables:
+export EOS_HOST=eos.cms.rcac.purdue.edu
+export EOS_PROTOCOL=root
+export EOS_PATH_PREFIX=/store/user/piperov
+
+3. Do the port-forwarding:
+screen -dr port-fwd
+kubectl port-forward -n servicex2 --address 127.0.0.1 svc/servicex-servicex-app 8000:8000 &
+kubectl port-forward -n servicex2 --address 127.0.0.1 pod/servicex-rabbitmq-0 15672:15672 &
+kubectl port-forward -n servicex2 --address 127.0.0.1 pod/servicex-rabbitmq-0 5672:5672 &
+
+4. Run the example again:
+(pixi-global) ┌[piperov@lat7490-a9][~/work/ServiceX](develop) 
+└$ python ./CMS_uproot_example.py
+U

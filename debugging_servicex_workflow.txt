@@ -1,0 +1,25 @@
+docker tag servicex-transformer-sidecar:local localhost:5000/servicex-transformer-sidecar:local
+docker push localhost:5000/servicex-transformer-sidecar:local
+
+k3d cluster delete my-dev-cluster
+k3d cluster create --config  k3d_my-dev-cluster_config.yaml
+
+k3d image import servicex-transformer-sidecar:local -c my-dev-cluster
+k3d image import sslhep/servicex_app:local -c my-dev-cluster
+
+servicex --namespace servicex2 init --cert-dir ~/.globus
+helm install -n servicex2 -f values_stefan_CMS.yaml --version v1.8.4 servicex ssl-hep/servicex
+(do the port-forwarding in a screen)
+
+(pixi-global) ┌[piperov@lat7490-a9][~/UIUC_Retreat] 
+└$ python ./CMS_uproot_example.py
+(this worked and produced a plot)
+
+----
+Try the 'new' values.yaml
+
+helm upgrade -n servicex2 -f values_local-k3d_CMS.yaml --version v1.8.4 servicex ssl-hep/servicex
+
+docker tag sslhep/servicex_app:local localhost:5000/servicex_app:local
+docker push localhost:5000/servicex_app:local
+
