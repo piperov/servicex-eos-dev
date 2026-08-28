@@ -17,6 +17,14 @@ ports:
   - port: 8443:443
     nodeFilters:
       - loadbalancer
+  # allow talking to EOS on port 1094
+  - port: 1094:1094
+    nodeFilters:
+      - loadbalancer
+  # UNCOMMENTED FOR SERVICEX CLIENT API CONNECTION
+  - port: 8000:30800
+    nodeFilters:
+      - loadbalancer
 #  # MAP ServiceX HARDCODED PORTS NATIVELY INTO THE CLUSTER
 #   - port: 8000:30800
 #     nodeFilters:

@@ -10,7 +10,6 @@ venv/
 # ROOT files and backups
 *.root
 *_bak
-*.txt
 
 # Local configuration files
 *config*.yaml
