@@ -1,4 +1,6 @@
-#!/usr/bin/env bash
+if [[ "${X509_USER_PROXY}" == "/etc/grid-security-ro/x509up" ]] || [[ -z "${X509_USER_PROXY}" ]]; then
+    export X509_USER_PROXY="/servicex/output/x509up"
+fi
 
 proxydir=$(dirname ${X509_USER_PROXY})
 

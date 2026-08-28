@@ -7,14 +7,15 @@ readme = "README.md"
 packages = [{include = "transformer_sidecar"}]
 
 [tool.poetry.dependencies]
-python = "~3.10"
+python = ">=3.10,<4.0"
 Celery= "^5.4"
 urllib3 = "^2.6.3"
 psutil = "^5.9.3"
 retry = "^0.9.2"
 minio = "^7.1.12"
 python-logstash = "^0.4.8"
-fsspec-xrootd = "^0.3.0"  # Or your preferred version string`
+fsspec-xrootd = "^0.3.0"
+xrootd = ">=5.8.3"
 
 uproot = "^5.7.0"
 fsspec = {extras = ["arrow"], version = "^2023.6.0"}

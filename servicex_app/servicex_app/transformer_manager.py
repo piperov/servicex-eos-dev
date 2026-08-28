@@ -237,6 +237,12 @@ class TransformerManager:
             client.V1EnvVar(name="BASH_ENV", value="/servicex/.bashrc"),
         ]
 
+        if x509_secret:
+            env += [
+                client.V1EnvVar(name="X509_USER_PROXY", value="/servicex/output/x509up"),
+                client.V1EnvVar(name="X509_CERT_DIR", value="/etc/grid-security/certificates"),
+            ]
+
         # provide pods with level and logging server info
         env += [
             client.V1EnvVar(
