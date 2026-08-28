@@ -21,10 +21,10 @@ ports:
   - port: 1094:1094
     nodeFilters:
       - loadbalancer
-  # UNCOMMENTED FOR SERVICEX CLIENT API CONNECTION
-  - port: 8000:30800
-    nodeFilters:
-      - loadbalancer
+#  # UNCOMMENT FOR SERVICEX CLIENT API CONNECTION
+#  - port: 8000:30800
+#    nodeFilters:
+#      - loadbalancer
 #  # MAP ServiceX HARDCODED PORTS NATIVELY INTO THE CLUSTER
 #   - port: 8000:30800
 #     nodeFilters:
@@ -75,6 +75,7 @@ volumes:
   - volume: /k3d-data:/data
     nodeFilters:
       - all
-  - volume: /home/piperov/UIUC_Retreat/namespace-servicex2.yaml:/var/lib/rancher/k3s/server/manifests/namespace-servicex2.yaml
+#  - volume: /home/piperov/UIUC_Retreat/namespace-servicex2.yaml:/var/lib/rancher/k3s/server/manifests/namespace-servicex2.yaml
+  - volume: "${PWD}/namespace-servicex2.yaml:/var/lib/rancher/k3s/server/manifests/namespace-servicex2.yaml"
     nodeFilters:
       - server:0
