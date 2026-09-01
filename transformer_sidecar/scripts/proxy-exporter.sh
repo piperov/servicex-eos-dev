@@ -16,7 +16,8 @@ while true; do
         RESULT=$?
         if [ $RESULT -eq 0 ]; then
             echo "INFO $INSTANCE_NAME xAOD-Transformer none Got proxy."
-            chmod 600 ${X509_USER_PROXY}
+            chown 1001:1001 ${X509_USER_PROXY} || true
+            chmod 666 ${X509_USER_PROXY}
             break
         else
             echo "WARNING $INSTANCE_NAME xAOD-Transformer none An issue encountered when getting proxy."

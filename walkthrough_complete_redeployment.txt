@@ -72,6 +72,15 @@ That concludes the test with the original transformer and servicex-app
 
 To test with the modified transformer and servicex-app :
 
+0: Update helm charts
+cd ./helm/servicex
+helm dependency update
+cd -
+
+(or - a one-liner:
+helm dependency update ./helm/servicex
+also should work)
+
 1. Point HELM to the local chart:
 helm upgrade --install -n servicex2 -f values_local-k3d_CMS.yaml servicex ./helm/servicex
 
