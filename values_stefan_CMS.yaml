@@ -13,7 +13,7 @@ transformer:
   autoscaler:
     enabled: true
     maxReplicas: 2
-    minReplicas: 2
+    minReplicas: 1
   sidecarImage: servicex-transformer-sidecar
   sidecarTag: local
   #sidecarPullPolicy: IfNotPresent
