@@ -82,6 +82,22 @@ class ObjectStoreManager:
                 f"Initializing fsspec filesystem: {self.eos_protocol}://{self.eos_host} with prefix {self.path_prefix}"
             )
             self.fs = fsspec.filesystem(self.eos_protocol, hostid=self.eos_host)
+            self.fs = fsspec.filesystem(self.eos_protocol, hostid=self.eos_host)
+
+            # --- SP let's check if we can access the remote EOS FS ---
+            try:
+                print("DEBUG: SP Testing remote filesystem access...")
+                # List the target prefix directory to verify read access
+                test_path = "/store/user/piperov"
+                # --- SP contents = self.fs.ls(test_path)
+                contents = self.fs.ls(self.path_prefix) 
+                # --- SP print(f"DEBUG: Success! Found {len(contents)} items in {test_path}")
+                print(f"DEBUG: Success! Found {len(contents)} items in {self.path_prefix}") 
+                print(f"DEBUG: Sample items: {contents[:3]}")
+            except Exception as e:
+                print(f"DEBUG: SP Remote filesystem test failed with error: {e}")
+            # ----------------------------
+
         else:
             from minio import Minio
 

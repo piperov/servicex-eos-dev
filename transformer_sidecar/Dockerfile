@@ -5,6 +5,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
     cmake \
     osg-ca-certs \
+    xrootd-client \
     && rm -rf /var/lib/apt/lists/*
 
 ENV POETRY_VERSION=2.1.1
@@ -31,3 +32,4 @@ ENV X509_USER_PROXY=/etc/grid-security-ro/x509up
 ENV X509_CERT_DIR=/etc/grid-security/certificates
 
 ENV PYTHONPATH=/servicex
+ENV XRD_LOGLEVEL=Debug

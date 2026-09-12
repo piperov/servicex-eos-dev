@@ -35,8 +35,26 @@ transformer:
   tag: local
   image: k3d-local-registry:5000/servicex-transformer-sidecar
   pullPolicy: Always
+###  language: python
+###  exec: |
+###    '''
+###    import os, time
+###    while not os.path.exists('/servicex/output/x509up'):
+###        print("Waiting for x509up proxy file...")
+###        time.sleep(2)
+###    print("Proxy file found! Running transformer...")
+###    exec(open('/generated/transform_single_file.py').read())
+###    '''
+
   language: python
-  exec: /generated/transform_single_file.py
+  exec: 'import os, time; print("Waiting for proxy..."); [time.sleep(2) for _ in iter(int, 1) if not os.path.exists("/servicex/output/x509up")]; exec(open("/generated/transform_single_file.py").read())'
+
+#  language: python
+#  exec: /generated/transform_single_file.py
+##   language: python
+##   exec: bash -c 'until [ -f /servicex/output/x509up ]; do echo "Waiting for x509up proxy file..."; sleep 2; done; echo "File found! Starting transformer."; python /generated/transform_single_file.py'
+
+
   scienceContainerPullPolicy: IfNotPresent
 # allow transformer to talk to the external network, so that it can reach EOS
   hostNetwork: true

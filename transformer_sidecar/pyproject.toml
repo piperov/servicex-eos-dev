@@ -14,7 +14,7 @@ psutil = "^5.9.3"
 retry = "^0.9.2"
 minio = "^7.1.12"
 python-logstash = "^0.4.8"
-fsspec-xrootd = "^0.3.0"
+fsspec-xrootd = "^0.5.5"
 xrootd = ">=5.8.3"
 
 uproot = "^5.7.0"

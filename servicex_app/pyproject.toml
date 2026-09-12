@@ -44,7 +44,9 @@ authlib = "^1.6.9"
 flask-moment = "^1.0.6"
 boto3 = ">=1.42.94"
 flask-admin = "^2.0.2"
-fsspec = "*"          # <--- Added this for fsspec
+fsspec-xrootd = "^0.5.5"
+xrootd = ">=5.8.3"
+fsspec = {extras = ["arrow"], version = "^2023.6.0"}
 
 [tool.poetry.group.test]
 optional = true

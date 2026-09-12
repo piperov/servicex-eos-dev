@@ -16,8 +16,8 @@ while true; do
         RESULT=$?
         if [ $RESULT -eq 0 ]; then
             echo "INFO $INSTANCE_NAME xAOD-Transformer noneSP Got proxy."
-            # chown 1001:1001 ${X509_USER_PROXY} || true
-            # chmod 600 ${X509_USER_PROXY}
+            chown 1001:1001 ${X509_USER_PROXY} || true
+            chmod 600 ${X509_USER_PROXY}
             ls -l ${X509_USER_PROXY}
             id
             break

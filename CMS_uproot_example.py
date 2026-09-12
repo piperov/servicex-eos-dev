@@ -9,10 +9,10 @@ import hist
 import matplotlib.pyplot as plt
 
 
-file = "root://eos.cms.rcac.purdue.edu:1094//store/mc/RunIII2024Summer24NanoAODv15/VBFH-Hto2Mu_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2024_realistic_v2-v2/100000/fc959f78-5cbc-438c-9d36-6451d53c6f30.root"
+file = "root://eos.cms.rcac.purdue.edu:1094//store/mc/RunIII2024Summer24NanoAODv15/VBFH-Hto2Mu_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2024_realistic_v2-v2/100000/f943a3a5-0619-4e0e-9282-b2a5fabe03f0.root"
 
 # other files of the same dataset
-# 37009fc8-d8e9-4c29-9dfe-c87bea77af62.root"
+# 37009fc8-d8e9-4c29-9dfe-c87bea77af62.root
 # 1d437865-3bfb-4d90-b596-c2f638d398f3.root
 # fc959f78-5cbc-438c-9d36-6451d53c6f30.root
 # f943a3a5-0619-4e0e-9282-b2a5fabe03f0.root
@@ -66,4 +66,5 @@ plt.title('Dimuon Invariant Mass')
 plt.ylabel('Events')
 
 plt.tight_layout()
-plt.show()
+plt.savefig('output.png')
+print("Data successfully delivered by ServiceX!")
