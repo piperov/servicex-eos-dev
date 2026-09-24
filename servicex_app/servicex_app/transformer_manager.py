@@ -239,7 +239,8 @@ class TransformerManager:
 
         if x509_secret:
             env += [
-                client.V1EnvVar(name="X509_USER_PROXY", value="/servicex/output/x509up"),
+                client.V1EnvVar(name="X509_USER_PROXY", value="/tmp/grid-security/x509up"),
+                #client.V1EnvVar(name="X509_USER_PROXY", value="/servicex/output/x509up"),
                 client.V1EnvVar(name="X509_CERT_DIR", value="/etc/grid-security/certificates"),
             ]
 
@@ -356,7 +357,11 @@ class TransformerManager:
                 " /servicex/output/scripts/proxy-exporter.sh & sleep 5 && "
             )
 
-        sidecar_command = (
+        sidecar_command = ""
+        if x509_secret:
+            sidecar_command += "/servicex/scripts/proxy-exporter.sh & sleep 5 && "
+
+        sidecar_command += (
             "PYTHONPATH=/servicex/transformer_sidecar:$PYTHONPATH "
             + "python /servicex/transformer_sidecar/transformer.py "
             + " --shared-dir /servicex/output "
@@ -447,6 +452,8 @@ class TransformerManager:
                 annotations=pod_annotations if pod_annotations else None,
             ),
             spec=client.V1PodSpec(
+                host_network=current_app.config.get("TRANSFORMER_HOST_NETWORK", False),
+                dns_policy=current_app.config.get("TRANSFORMER_DNS_POLICY", "ClusterFirst"),
                 restart_policy="Always",
                 termination_grace_period_seconds=TransformerManager.POD_TERMINATION_GRACE_PERIOD,
                 priority_class_name=current_app.config.get(

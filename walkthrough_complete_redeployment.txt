@@ -94,8 +94,9 @@ screen -dr port-fwd
 kubectl port-forward -n servicex2 --address 127.0.0.1 svc/servicex-servicex-app 8000:8000 &
 kubectl port-forward -n servicex2 --address 127.0.0.1 pod/servicex-rabbitmq-0 15672:15672 &
 kubectl port-forward -n servicex2 --address 127.0.0.1 pod/servicex-rabbitmq-0 5672:5672 &
+kubectl port-forward -n servicex2 --address 127.0.0.1 pod/servicex-rabbitmq-0 5432:5432 &
 
 4. Run the example again:
 (pixi-global) ┌[piperov@lat7490-a9][~/work/ServiceX](develop) 
 └$ python ./CMS_uproot_example.py
-U
+

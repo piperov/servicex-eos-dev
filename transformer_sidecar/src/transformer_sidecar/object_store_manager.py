@@ -86,7 +86,7 @@ class ObjectStoreManager:
 
             # --- SP let's check if we can access the remote EOS FS ---
             try:
-                print("DEBUG: SP Testing remote filesystem access...")
+                print("DEBUG:   SP   Testing remote filesystem access...")
                 # List the target prefix directory to verify read access
                 test_path = "/store/user/piperov"
                 # --- SP contents = self.fs.ls(test_path)

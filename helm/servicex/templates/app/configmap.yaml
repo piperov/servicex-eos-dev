@@ -133,6 +133,8 @@ data:
     TRANSFORMER_TOLERATIONS = {{ .Values.transformer.tolerations | toJson }}
     TRANSFORMER_AFFINITY = {{ .Values.transformer.affinity | toJson }}
     TRANSFORMER_POD_ANNOTATIONS = {{ .Values.transformer.podAnnotations | toJson }}
+    TRANSFORMER_HOST_NETWORK = {{ ternary "True" "False" (default false .Values.transformer.hostNetwork) }}
+    TRANSFORMER_DNS_POLICY = "{{ default "ClusterFirst" .Values.transformer.dnsPolicy }}"
 
     {{- if .Values.transformer.cvmfsVolume }}
     # This will be mounted into the transformer pod's /data directory
