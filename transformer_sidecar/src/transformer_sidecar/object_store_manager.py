@@ -28,6 +28,7 @@
 import logging
 import os
 import traceback
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 try:
     from minio.error import MinioException, S3Error
@@ -48,6 +49,11 @@ from tenacity import (
     wait_random,
 )
 
+# Timeout (seconds) for individual EOS operations. XRootD can hang
+# indefinitely if the server is unreachable, so we cap each call.
+EOS_CONNECT_TIMEOUT = 30
+EOS_OP_TIMEOUT = 60
+
 
 class ObjectStoreError(Exception):
     pass
@@ -65,7 +71,6 @@ class ObjectStoreManager:
             self.store_type = "eos"
 
         if self.store_type in ["eos", "fsspec", "root"]:
-            import fsspec
             self.eos_host = os.environ.get("EOS_HOST", "eos.cms.rcac.purdue.edu")
             self.eos_protocol = os.environ.get("EOS_PROTOCOL", "root")
 
@@ -77,27 +82,8 @@ class ObjectStoreManager:
             self.use_bucket_directory = (
                 os.environ.get("EOS_USE_BUCKET_DIRECTORY", "true").lower() == "true"
             )
-
-            self.logger.info(
-                f"Initializing fsspec filesystem: {self.eos_protocol}://{self.eos_host} with prefix {self.path_prefix}"
-            )
-            self.fs = fsspec.filesystem(self.eos_protocol, hostid=self.eos_host)
-            self.fs = fsspec.filesystem(self.eos_protocol, hostid=self.eos_host)
-
-            # --- SP let's check if we can access the remote EOS FS ---
-            try:
-                print("DEBUG:   SP   Testing remote filesystem access...")
-                # List the target prefix directory to verify read access
-                test_path = "/store/user/piperov"
-                # --- SP contents = self.fs.ls(test_path)
-                contents = self.fs.ls(self.path_prefix) 
-                # --- SP print(f"DEBUG: Success! Found {len(contents)} items in {test_path}")
-                print(f"DEBUG: Success! Found {len(contents)} items in {self.path_prefix}") 
-                print(f"DEBUG: Sample items: {contents[:3]}")
-            except Exception as e:
-                print(f"DEBUG: SP Remote filesystem test failed with error: {e}")
-            # ----------------------------
-
+            self._fs = None
+            self._fs_pid = None
         else:
             from minio import Minio
 
@@ -111,6 +97,47 @@ class ObjectStoreManager:
                 secret_key=password if password else os.environ["MINIO_SECRET_KEY"],
                 secure=secure_connection,
             )
+
+    @property
+    def fs(self):
+        current_pid = os.getpid()
+        if getattr(self, "_fs_pid", None) != current_pid or getattr(self, "_fs", None) is None:
+            import fsspec
+            self.logger.info(
+                f"[EOS] Initializing fsspec filesystem for pid={current_pid}: "
+                f"{self.eos_protocol}://{self.eos_host} "
+                f"with prefix={self.path_prefix} "
+                f"use_bucket_directory={self.use_bucket_directory}"
+            )
+            self._fs = fsspec.filesystem(self.eos_protocol, hostid=self.eos_host)
+            self._fs_pid = current_pid
+
+            # Test remote connectivity with a timeout so we fail fast
+            # rather than hanging indefinitely if EOS is unreachable.
+            self.logger.info(
+                f"[EOS] Testing remote filesystem connectivity for pid={current_pid} "
+                f"(timeout={EOS_CONNECT_TIMEOUT}s): listing {self.path_prefix}"
+            )
+            try:
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(self._fs.ls, self.path_prefix)
+                    contents = future.result(timeout=EOS_CONNECT_TIMEOUT)
+                self.logger.info(
+                    f"[EOS] Connectivity test PASSED for pid={current_pid}: found {len(contents)} items "
+                    f"in {self.path_prefix}. Sample: {contents[:3]}"
+                )
+            except FuturesTimeoutError:
+                self.logger.error(
+                    f"[EOS] Connectivity test TIMED OUT for pid={current_pid} after {EOS_CONNECT_TIMEOUT}s "
+                    f"trying to list {self.path_prefix} on {self.eos_host}. "
+                    "This usually means the pod cannot reach the EOS server "
+                    "(check network/hostNetwork settings and XRootD port 1094)."
+                )
+            except Exception as e:
+                self.logger.warning(
+                    f"[EOS] Connectivity test FAILED for pid={current_pid} (will attempt uploads anyway): {e}"
+                )
+        return self._fs
 
     @retry(
         stop=stop_after_attempt(3),
@@ -148,9 +175,21 @@ class ObjectStoreManager:
         This bypasses fs.put() which is not implemented by fsspec_xrootd.
         """
         import shutil
-        with open(path, "rb") as f_local:
-            with self.fs.open(remote_path, "wb") as f_remote:
-                shutil.copyfileobj(f_local, f_remote)
+        self.logger.info(f"[EOS] Opening remote file for write (timeout={EOS_OP_TIMEOUT}s): {remote_path}")
+        try:
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                def _do_copy():
+                    with open(path, "rb") as f_local:
+                        with self.fs.open(remote_path, "wb") as f_remote:
+                            shutil.copyfileobj(f_local, f_remote)
+                future = executor.submit(_do_copy)
+                future.result(timeout=EOS_OP_TIMEOUT)
+        except FuturesTimeoutError:
+            raise OSError(
+                f"[EOS] Upload to {remote_path} timed out after {EOS_OP_TIMEOUT}s. "
+                "Check EOS network connectivity and x509 proxy validity."
+            )
+        self.logger.info(f"[EOS] Upload completed: {remote_path}")
 
     def upload_file(self, bucket, object_name, path):
         try:
@@ -160,13 +199,28 @@ class ObjectStoreManager:
                     remote_dir = f"{remote_dir}/{bucket}"
                 remote_path = f"{remote_dir}/{object_name}"
 
+                self.logger.info(
+                    f"[EOS] Creating remote directory (if needed): {remote_dir}"
+                )
                 try:
-                    self.fs.makedirs(remote_dir, exist_ok=True)
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        future = executor.submit(self.fs.makedirs, remote_dir, True)
+                        future.result(timeout=EOS_OP_TIMEOUT)
+                    self.logger.info(f"[EOS] Remote directory ready: {remote_dir}")
+                except FuturesTimeoutError:
+                    self.logger.warning(
+                        f"[EOS] makedirs timed out after {EOS_OP_TIMEOUT}s for "
+                        f"{remote_dir} — will attempt upload anyway"
+                    )
                 except Exception as e:
                     self.logger.warning(
-                        f"Could not create directory {remote_dir} (will attempt upload anyway): {e}"
+                        f"[EOS] Could not create directory {remote_dir} "
+                        f"(will attempt upload anyway): {e}"
                     )
 
+                self.logger.info(
+                    f"[EOS] Starting upload: local={path} -> remote={remote_path}"
+                )
                 self._upload_file_fsspec_with_retry(remote_path, path)
 
                 self.logger.info(

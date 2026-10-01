@@ -324,6 +324,15 @@ class TransformerManager:
                             value=str(current_app.config["EOS_USE_BUCKET_DIRECTORY"]),
                         )
                     ]
+                current_app.logger.info(
+                    "[EOS] Injecting EOS env vars into transformer pod: "
+                    f"OBJECT_STORE_TYPE={current_app.config.get('OBJECT_STORE_TYPE')} "
+                    f"EOS_HOST={current_app.config.get('EOS_HOST')} "
+                    f"EOS_PROTOCOL={current_app.config.get('EOS_PROTOCOL')} "
+                    f"EOS_PATH_PREFIX={current_app.config.get('EOS_PATH_PREFIX')} "
+                    f"EOS_USE_BUCKET_DIRECTORY={current_app.config.get('EOS_USE_BUCKET_DIRECTORY')}",
+                    extra={"request_id": request_id},
+                )
             else:
                 env = env + [
                     client.V1EnvVar(

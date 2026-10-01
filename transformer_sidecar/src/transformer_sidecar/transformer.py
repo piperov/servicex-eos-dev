@@ -407,9 +407,22 @@ def convert_to_rntuple(source_path: Path) -> Optional[Path]:
 def upload_file(
     source_path: Path, servicex: ServiceXAdapter, rec: FileCompleteRecord
 ) -> None:
-    object_store = ObjectStoreManager()
+    # Reuse the module-level object_store initialized at startup rather than
+    # creating a fresh ObjectStoreManager() (and re-running the EOS connectivity
+    # test) for every single file upload.
+    global object_store
+    store = object_store
     object_name = rec.s3_object_name
 
+    logger.info(
+        "[EOS/ObjectStore] upload_file() called — using module-level ObjectStoreManager.",
+        extra={
+            "request_id": request_id,
+            "file_id": rec.file_id,
+            "place": PLACE,
+            "object_name": object_name,
+        },
+    )
     logger.info(
         "Uploading file to object store.",
         extra={
@@ -421,7 +434,7 @@ def upload_file(
     )
     t0 = time.time()
     try:
-        object_store.upload_file(request_id, object_name, source_path.as_posix())
+        store.upload_file(request_id, object_name, source_path.as_posix())
         logger.info(
             "File uploaded to object store.",
             extra={
@@ -496,7 +509,15 @@ def init(args: Union[Namespace, SimpleNamespace], app: Celery) -> None:
 
     if args.result_destination == "object-store":
         posix_path = args.shared_dir
+        logger.info(
+            "[EOS/ObjectStore] Initializing ObjectStoreManager at startup ...",
+            extra={"request_id": request_id, "place": PLACE},
+        )
         object_store = ObjectStoreManager()
+        logger.info(
+            "[EOS/ObjectStore] ObjectStoreManager initialized successfully.",
+            extra={"request_id": request_id, "place": PLACE},
+        )
     elif args.output_dir:
         object_store = None
         posix_path = args.output_dir
