@@ -1,5 +1,6 @@
 import datetime
 
+from flask import current_app
 from flask_restful import reqparse
 
 from servicex_app.decorators import auth_required
@@ -37,9 +38,31 @@ class TransformationResults(ServiceXResource):
                 TransformationResult.created_at > later_than
             )
 
-        results = [
-            transformation_result.to_json(transformation_result)
-            for transformation_result in transform_result_query
-        ]
+        store_type = current_app.config.get("OBJECT_STORE_TYPE", "minio").lower()
+        is_eos = store_type in ["eos", "fsspec", "root"]
+
+        if is_eos:
+            eos_host = current_app.config.get("EOS_HOST", "eos.cms.rcac.purdue.edu")
+            eos_protocol = current_app.config.get("EOS_PROTOCOL", "root")
+            prefix = current_app.config.get("EOS_PATH_PREFIX", "/store/user/piperov")
+            if not prefix.startswith("/"):
+                prefix = "/" + prefix
+            prefix = prefix.rstrip("/")
+            use_bucket = current_app.config.get("EOS_USE_BUCKET_DIRECTORY", True)
+            if isinstance(use_bucket, str):
+                use_bucket = use_bucket.lower() == "true"
+
+        results = []
+        for transformation_result in transform_result_query:
+            res_json = transformation_result.to_json(transformation_result)
+            if is_eos and res_json.get("s3-object-name"):
+                s3_name = res_json["s3-object-name"]
+                if not s3_name.startswith("root://") and not s3_name.startswith("http"):
+                    if use_bucket:
+                        full_path = f"{prefix}/{request_id}/{s3_name}"
+                    else:
+                        full_path = f"{prefix}/{s3_name}"
+                    res_json["s3-object-name"] = f"{eos_protocol}://{eos_host}:1094/{full_path}"
+            results.append(res_json)
 
         return {"results": results}

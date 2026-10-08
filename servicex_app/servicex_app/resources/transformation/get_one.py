@@ -47,16 +47,20 @@ class TransformationRequest(ServiceXResource):
 
         transform_json = transform.to_json()
         if (
-            current_app.config["OBJECT_STORE_ENABLED"]
+            current_app.config.get("OBJECT_STORE_ENABLED", True)
             and transform_json["result-destination"]
             == TransformRequest.OBJECT_STORE_DEST
         ):
-            transform_json["minio-endpoint"] = current_app.config["MINIO_PUBLIC_URL"]
+            store_type = current_app.config.get("OBJECT_STORE_TYPE", "minio").lower()
+            if store_type in ["eos", "fsspec", "root"]:
+                transform_json["minio-endpoint"] = current_app.config.get("EOS_HOST", "eos.cms.rcac.purdue.edu")
+            else:
+                transform_json["minio-endpoint"] = current_app.config.get("MINIO_PUBLIC_URL", "localhost:9000")
             transform_json["minio-secured"] = current_app.config.get(
                 "MINIO_ENCRYPT_PUBLIC", True
             )
-            transform_json["minio-access-key"] = current_app.config["MINIO_ACCESS_KEY"]
-            transform_json["minio-secret-key"] = current_app.config["MINIO_SECRET_KEY"]
+            transform_json["minio-access-key"] = current_app.config.get("MINIO_ACCESS_KEY", "miniouser")
+            transform_json["minio-secret-key"] = current_app.config.get("MINIO_SECRET_KEY", "leftfoot1")
 
         if "LOGS_URL" in current_app.config:
             transform_json["log-url"] = current_app.config["LOGS_URL"]

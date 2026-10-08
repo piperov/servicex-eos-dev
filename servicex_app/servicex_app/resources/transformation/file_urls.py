@@ -40,20 +40,22 @@ import boto3
 class FileURLGenerator(ServiceXResource):
     def __init__(self):
         super().__init__()
-        # Add branches for different backends when relevant
-        # set up S3 client
-        endpoint_url = (
-            "https://"
-            if current_app.config.get("MINIO_ENCRYPT_PUBLIC", True)
-            else "http://"
-        ) + current_app.config["MINIO_PUBLIC_URL"]
-        self.s3client = boto3.client(
-            "s3",
-            endpoint_url=endpoint_url,
-            aws_access_key_id=current_app.config["MINIO_ACCESS_KEY"],
-            aws_secret_access_key=current_app.config["MINIO_SECRET_KEY"],
-            use_ssl=current_app.config.get("MINIO_ENCRYPT_PUBLIC", True),
-        )
+        store_type = current_app.config.get("OBJECT_STORE_TYPE", "minio").lower()
+        if store_type in ["eos", "fsspec", "root"]:
+            self.s3client = None
+        else:
+            endpoint_url = (
+                "https://"
+                if current_app.config.get("MINIO_ENCRYPT_PUBLIC", True)
+                else "http://"
+            ) + (current_app.config.get("MINIO_PUBLIC_URL") or "localhost:9000")
+            self.s3client = boto3.client(
+                "s3",
+                endpoint_url=endpoint_url,
+                aws_access_key_id=current_app.config.get("MINIO_ACCESS_KEY", ""),
+                aws_secret_access_key=current_app.config.get("MINIO_SECRET_KEY", ""),
+                use_ssl=current_app.config.get("MINIO_ENCRYPT_PUBLIC", True),
+            )
 
     @auth_required
     def post(self):
@@ -80,7 +82,31 @@ class FileURLGenerator(ServiceXResource):
         expirydelta = 365 * 24 * 60 * 60
         expiry = int(datetime.datetime.now().timestamp() + expirydelta)
 
-        # Add branches for other backends when relevant
+        store_type = current_app.config.get("OBJECT_STORE_TYPE", "minio").lower()
+        if store_type in ["eos", "fsspec", "root"]:
+            eos_host = current_app.config.get("EOS_HOST", "eos.cms.rcac.purdue.edu")
+            eos_protocol = current_app.config.get("EOS_PROTOCOL", "root")
+            prefix = current_app.config.get("EOS_PATH_PREFIX", "/store/user/piperov")
+            if not prefix.startswith("/"):
+                prefix = "/" + prefix
+            prefix = prefix.rstrip("/")
+            use_bucket = current_app.config.get("EOS_USE_BUCKET_DIRECTORY", True)
+            if isinstance(use_bucket, str):
+                use_bucket = use_bucket.lower() == "true"
+
+            rv = {}
+            for f in args["file_list"]:
+                if f.startswith("root://") or f.startswith("http"):
+                    url = f
+                else:
+                    if use_bucket:
+                        full_path = f"{prefix}/{request_id}/{f}"
+                    else:
+                        full_path = f"{prefix}/{f}"
+                    url = f"{eos_protocol}://{eos_host}:1094/{full_path}"
+                rv[f] = (url, {}, expiry)
+            return {"uris": rv}
+
         rv = {
             f: (
                 self.s3client.generate_presigned_url(
