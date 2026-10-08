@@ -100,3 +100,4 @@ kubectl port-forward -n servicex2 --address 127.0.0.1 pod/servicex-rabbitmq-0 54
 (pixi-global) ┌[piperov@lat7490-a9][~/work/ServiceX](develop) 
 └$ python ./CMS_uproot_example.py
 
+(debugging the EOS reads now)
