@@ -198,23 +198,24 @@ class ObjectStoreManager:
                 if self.use_bucket_directory:
                     remote_dir = f"{remote_dir}/{bucket}"
                 remote_path = f"{remote_dir}/{object_name}"
+                remote_file_dir = os.path.dirname(remote_path)
 
                 self.logger.info(
-                    f"[EOS] Creating remote directory (if needed): {remote_dir}"
+                    f"[EOS] Creating remote directory (if needed): {remote_file_dir}"
                 )
                 try:
                     with ThreadPoolExecutor(max_workers=1) as executor:
-                        future = executor.submit(self.fs.makedirs, remote_dir, True)
+                        future = executor.submit(self.fs.makedirs, remote_file_dir, True)
                         future.result(timeout=EOS_OP_TIMEOUT)
-                    self.logger.info(f"[EOS] Remote directory ready: {remote_dir}")
+                    self.logger.info(f"[EOS] Remote directory ready: {remote_file_dir}")
                 except FuturesTimeoutError:
                     self.logger.warning(
                         f"[EOS] makedirs timed out after {EOS_OP_TIMEOUT}s for "
-                        f"{remote_dir} — will attempt upload anyway"
+                        f"{remote_file_dir} — will attempt upload anyway"
                     )
                 except Exception as e:
                     self.logger.warning(
-                        f"[EOS] Could not create directory {remote_dir} "
+                        f"[EOS] Could not create directory {remote_file_dir} "
                         f"(will attempt upload anyway): {e}"
                     )
 

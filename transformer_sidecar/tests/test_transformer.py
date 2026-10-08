@@ -183,7 +183,7 @@ def test_transformer_root_to_parquet(
         mock_science_container.return_value.await_response.return_value = "success."
 
         result_file_path = (
-            Path(temp_dir) / test_request_id / "scratch" / "site1:file.root"
+            Path(temp_dir) / test_request_id / "scratch" / "file.root"
         )
         result_file_path.parent.mkdir(parents=True)
         with open(result_file_path, "w") as f:
@@ -242,7 +242,7 @@ def test_transformer_root_to_rntuple(
         mock_science_container.return_value.await_response.return_value = "success."
 
         result_file_path = (
-            Path(temp_dir) / test_request_id / "scratch" / "site1:file.root"
+            Path(temp_dir) / test_request_id / "scratch" / "file.root"
         )
         result_file_path.parent.mkdir(parents=True)
         with open(result_file_path, "w") as f:
@@ -301,7 +301,7 @@ def test_transformer_root_to_parquet_failed(
         mock_science_container.return_value.await_response.return_value = "success."
 
         result_file_path = (
-            Path(temp_dir) / test_request_id / "scratch" / "site1:file.root"
+            Path(temp_dir) / test_request_id / "scratch" / "file.root"
         )
         result_file_path.parent.mkdir(parents=True)
         with open(result_file_path, "w") as f:
@@ -358,7 +358,7 @@ def test_transformer_parquet(
         ]
 
         result_file_path = (
-            Path(temp_dir) / test_request_id / "scratch" / "site2:file.root.parquet"
+            Path(temp_dir) / test_request_id / "scratch" / "file.parquet"
         )
         result_file_path.parent.mkdir(parents=True)
         with open(result_file_path, "w") as f:
@@ -406,7 +406,7 @@ def test_transformer_output_dir(
         ]
 
         result_file_path = os.path.join(
-            temp_dir, "local", "results", "site2:file.root.parquet"
+            temp_dir, "local", "results", "file.parquet"
         )
         with open(result_file_path, "w") as f:
             f.write("test")
@@ -489,6 +489,23 @@ def test_hash_path():
     assert len(hash_path("rootfile12" * 300)) == 255
 
 
+def test_clean_output_path():
+    from transformer_sidecar.transformer import clean_output_path
+
+    # Standard CMS EOS path
+    input_path = "root://eos.cms.rcac.purdue.edu:1094//store/mc/RunIII2024Summer24NanoAODv15/VBFH-Hto2Mu_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2024_realistic_v2-v2/100000/fc959f78-5cbc-438c-9d36-6451d53c6f30.root"
+    assert clean_output_path(input_path) == "100000/fc959f78-5cbc-438c-9d36-6451d53c6f30.root"
+
+    # Parquet format requested
+    assert clean_output_path(input_path, "parquet") == "100000/fc959f78-5cbc-438c-9d36-6451d53c6f30.parquet"
+
+    # Single element path
+    assert clean_output_path("file.root") == "file.root"
+
+    # Path with colons in protocol/site
+    assert clean_output_path("site1:file.root") == "file.root"
+
+
 def test_transform_file(
     args,
     mock_celery,
@@ -513,7 +530,7 @@ def test_transform_file(
         ]
 
         result_file_path = (
-            Path(temp_dir) / test_request_id / "scratch" / "site2:file.root"
+            Path(temp_dir) / test_request_id / "scratch" / "file.root"
         )
         result_file_path.parent.mkdir(parents=True)
         with open(result_file_path, "w") as f:

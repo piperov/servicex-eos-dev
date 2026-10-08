@@ -35,6 +35,7 @@ import timeit
 import re
 from argparse import Namespace
 from hashlib import sha1, sha256
+from urllib.parse import urlparse
 from pathlib import Path
 from types import SimpleNamespace
 from typing import NamedTuple, Optional, Union
@@ -180,10 +181,8 @@ def transform_file(
             # Decide an optional file extension for the results. If the output format is
             # parquet then we add that as an extension, otherwise stick with the format
             # of the input file.
-            result_extension = ".parquet" if result_format == "parquet" else ""
-            hashed_file_name = hash_path(
-                _file_path.replace("/", "_") + result_extension
-            )
+            clean_file_name = clean_output_path(_file_path, result_format)
+            hashed_file_name = hash_path(clean_file_name)
 
             # The transformer will write results here as they are generated. This
             # directory isn't monitored.
@@ -195,6 +194,9 @@ def transform_file(
                 transform_request["safeOutputFileName"] = os.path.join(
                     scratch_path, hashed_file_name
                 )
+            os.makedirs(
+                os.path.dirname(transform_request["safeOutputFileName"]), exist_ok=True
+            )
 
             transform_request["result-format"] = result_format
             science_container.synch()
@@ -215,22 +217,27 @@ def transform_file(
             )
             if science_container_response == "success.":
                 output_path = Path(transform_request["safeOutputFileName"])
+                base_dir_path = Path(posix_path if result_destination == "volume" else scratch_path)
+                try:
+                    rel_output_path = output_path.relative_to(base_dir_path)
+                except ValueError:
+                    rel_output_path = output_path
 
                 # Now is the time to convert the file to parquet if that's what the user
                 # requested, but our particular transformer doesn't support it.
                 # Delete source if we did a conversion so it doesn't clutter the POSIX
                 # output if we use that.
                 if convert_root_to_parquet:
-                    object_name = output_path.with_suffix(".parquet").name
+                    object_name = rel_output_path.with_suffix(".parquet").as_posix()
                     if (file_to_upload := convert_to_parquet(output_path)) is not None:
                         output_path.unlink()
                 elif convert_root_to_rntuple:
-                    object_name = output_path.name
+                    object_name = rel_output_path.as_posix()
                     if (file_to_upload := convert_to_rntuple(output_path)) is not None:
                         output_path.unlink()
                 else:
                     file_to_upload = output_path
-                    object_name = output_path.name
+                    object_name = rel_output_path.as_posix()
 
                 if file_to_upload is not None:
                     # only None if conversion has failed
@@ -625,6 +632,29 @@ def get_process_info():
         system=time_stats.system + time_stats.children_system,
         iowait=iowait,
     )
+
+
+def clean_output_path(file_path: str, result_format: str = "") -> str:
+    """
+    Extract up to the last 2 path elements of the input file path,
+    removing host/port/scheme prefix and avoiding colon symbols.
+
+    For example:
+    'root://eos.cms.rcac.purdue.edu:1094//store/mc/.../100000/fc959f78-5cbc-438c-9d36-6451d53c6f30.root'
+    -> '100000/fc959f78-5cbc-438c-9d36-6451d53c6f30.root'
+    """
+    parsed = urlparse(file_path)
+    path_str = parsed.path if parsed.path else file_path
+    parts = [p.replace(":", "_") for p in path_str.split("/") if p]
+    if not parts:
+        rel_path = "output.root"
+    else:
+        rel_path = "/".join(parts[-2:])
+
+    if result_format == "parquet" and not rel_path.endswith(".parquet"):
+        rel_path = str(Path(rel_path).with_suffix(".parquet"))
+
+    return rel_path
 
 
 def hash_path(file_name: str) -> str:
