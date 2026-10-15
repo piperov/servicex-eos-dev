@@ -9,7 +9,7 @@ import hist
 import matplotlib.pyplot as plt
 
 
-file = "root://eos.cms.rcac.purdue.edu:1094//store/mc/RunIII2024Summer24NanoAODv15/VBFH-Hto2Mu_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2024_realistic_v2-v2/100000/fc959f78-5cbc-438c-9d36-6451d53c6f30.root"
+file = "root://eos.cms.rcac.purdue.edu:1094//store/mc/RunIII2024Summer24NanoAODv15/VBFH-Hto2Mu_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2024_realistic_v2-v2/100000/f943a3a5-0619-4e0e-9282-b2a5fabe03f0.root"
 #file = "root://eos.cms.rcac.purdue.edu:1094//store/mc/RunIII2024Summer24NanoAODv15/VBFH-Hto2Mu_Par-M-125_TuneCP5_13p6TeV_powheg-pythia8/NANOAODSIM/150X_mcRun3_2024_realistic_v2-v2/2810000/0c56515d-beac-4c33-8e8f-f57b1ba027d1.root"
 
 # other files of the same dataset
@@ -36,6 +36,9 @@ uproot_raw_query = query.UprootRaw([{
 
 
 spec_uproot_raw = {
+    'General': {
+        'Delivery': 'URLs',  # Request root:// XRootD URIs - uproot opens them directly
+    },
     'Sample': [{
         'Name': 'UprootRawExample',
         'Dataset': nanoaod_dataset,
@@ -46,8 +49,21 @@ spec_uproot_raw = {
 results_uproot_raw=deliver(spec_uproot_raw)
 
 
-# Read output file
-skimmed_file = results_uproot_raw["UprootRawExample"][0]
+# The result sould be a root:// XRootD URI - so that uproot can open it directly over XRootD
+### skimmed_file = results_uproot_raw["UprootRawExample"][0]
+# Extract the raw ServiceX string
+raw_url = results_uproot_raw["UprootRawExample"][0]
+
+# If it's wrapped in an HTTPS string, extract the true root:// URL inside it
+if "root%3A//" in raw_url:
+    import urllib.parse
+    # Find the nested root:// path, isolate it from the web queries, and unquote it
+    nested_path = raw_url.split("root%3A//")[1].split("?")[0]
+    skimmed_file = "root://" + urllib.parse.unquote(nested_path)
+else:
+    skimmed_file = raw_url
+
+print(f"-- SP -- Skimmed File is: {skimmed_file}")
 with uproot.open(skimmed_file) as f:
     arrays = f["Events"].arrays()
 
