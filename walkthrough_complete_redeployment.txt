@@ -103,4 +103,17 @@ voms-proxy-init -verify --rfc --voms cms -valid 192:00
 (pixi-global) ┌[piperov@lat7490-a9][~/work/ServiceX](develop) 
 └$ python ./CMS_uproot_example.py
 
-(debugging the EOS reads now)
+
+=====================
+Pushing Docker images to external registries (Geddes Harbor)
+You need VPN to reach Geddes registry!
+---
+docker login geddes-registry.rcac.purdue.edu
+(use Purdue career account, 2FA)
+
+docker tag servicex-transformer-sidecar:local geddes-registry.rcac.purdue.edu/cms/servicex-transformer-sidecar:local
+docker push geddes-registry.rcac.purdue.edu/cms/servicex-transformer-sidecar:local
+docker tag servicex_app:local geddes-registry.rcac.purdue.edu/cms/servicex_app:local
+docker push geddes-registry.rcac.purdue.edu/cms/servicex_app:local
+
+=====================
